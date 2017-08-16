@@ -1,0 +1,83 @@
+---
+
+  - hosts: all
+    become: yes
+
+    vars:
+    - host: "{{hostname}}"
+    - user: "{{username}}"
+    - home: "/home/{{user}}"
+
+    tasks:
+
+    - name: (cloud) set hostname
+      set_fact:
+        host: '{{ansible_default_ipv4.address | replace(".", "-")}}'
+
+    - name: hostname ({{host}})
+      hostname:
+        name: "{{host}}"
+
+    - name: /etc/hosts
+      replace:
+        dest: "/etc/hosts"
+        regexp: "127.0.0.1 localhost"
+        replace: "127.0.0.1 localhost {{host}}"
+
+    - name: prompt
+      lineinfile:
+        dest: "~/.profile"
+        line: "PS1='\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ '"
+      become: "{{user}}"
+
+    - name: copy files
+      copy:
+        src: "{{item}}"
+        dest: "~"
+      with_items:
+      - "~/.bash_aliases"
+      - "~/.tmux.conf"
+      - "~/.vimrc"
+      ignore_errors: yes
+      become: "{{user}}"
+
+    - name: create files
+      file:
+        state: touch
+        dest: "{{item}}"
+      with_items:
+      - .Xauthority
+      - .hushlogin
+      become: "{{user}}"
+
+    - name: sshd_config
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        line: "AddressFamily inet"
+        state: present
+      register: sshd
+
+    - name: update system
+      apt:
+        update_cache: yes
+        cache_valid_time: 86400
+        upgrade: full
+
+    - name: system packages
+      apt:
+        name: "{{item}}"
+        state: latest
+      with_items:
+      - curl
+      - git
+      - lsof
+      - man-db
+      - python-dev
+      - python-pip
+      - python-virtualenv
+      - ruby
+      - tcpdump
+      - tmux
+      - tree
+      - vim
+      - virtualenvwrapper

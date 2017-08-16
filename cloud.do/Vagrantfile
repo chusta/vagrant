@@ -1,0 +1,35 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+require 'json'
+
+digital_ocean = File.open("config.json") { |f| JSON.load(f) }
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "digital_ocean"
+  config.ssh.private_key_path = digital_ocean["ssh_key"]
+
+  config.vm.define "vagrant" do |config|
+    config.vm.provider :digital_ocean do |provider, override|
+      provider.token = digital_ocean["api_key"]
+      provider.image = digital_ocean["image"]
+      provider.region = digital_ocean["regions"].sample
+      provider.size = "512mb"
+    end
+  end
+
+  config.vm.provision "shell",
+    inline: "sudo apt-get -y install aptitude python"
+
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "../ansible/vagrant.yml"
+    ansible.sudo = true
+    ansible.extra_vars = {
+        "hostname": "box",
+        "username": "vagrant",
+        "cloud": true
+    }
+  end
+
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+end

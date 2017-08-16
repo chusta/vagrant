@@ -1,0 +1,29 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-16.04"
+
+  config.vm.provider "vmware_workstation" do |vm|
+    vm.name = "dev"
+    vm.cpus = "2"
+    vm.memory = "4096"
+    vm.vmx["ethernet0.pcislotnumber"] = "32"
+  end
+
+  config.vm.provision "shell",
+    inline: "sudo apt-get -y install aptitude python"
+
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "../ansible/vagrant.yml"
+    ansible.verbose = false
+    ansible.sudo = true
+    ansible.extra_vars = {
+        "hostname": "dev",
+        "username": "vagrant"
+    }
+  end
+
+  config.ssh.forward_x11 = true
+  config.vm.synced_folder "data/", "/vagrant"
+end
